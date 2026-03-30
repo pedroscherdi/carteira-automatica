@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Carteira SETUP</title>
+<title>Progel Logística - Gestão de Frota</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,6 +12,7 @@
   --primary: #1e4d2b; --primary-light: #2d7a42; --bg-soft: #f4f7f5;
   --accent: #c5e1a5; --danger: #d32f2f; --surface: #ffffff;
   --text: #1a2e1f; --text-light: #5c7562; --border: #e0e6e1; --r: 16px;
+  --warn: #e65100;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'DM Sans', sans-serif; background: var(--bg-soft); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
@@ -30,10 +31,9 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg-soft); color: va
 .sidebar { width: 380px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 20px; }
 .scroll-area { flex: 1; overflow-y: auto; padding-right: 8px; margin-top: 15px; }
 
-.jornada-card { background: var(--primary); color: white; border-radius: var(--r); padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(30, 77, 43, 0.2); }
+.jornada-card { background: var(--primary); color: white; border-radius: var(--r); padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 20px rgba(30,77,43,0.2); }
 .jornada-card.alert { background: var(--danger); }
 .time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 15px; }
-.time-item { text-align: left; }
 .time-item span { font-size: 10px; text-transform: uppercase; opacity: 0.8; font-weight: 700; display: block; }
 .time-item strong { font-size: 16px; font-family: 'Syne'; }
 
@@ -46,104 +46,128 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg-soft); color: va
 .sugestao-tag { position: absolute; bottom: 10px; right: 10px; background: #ffd600; color: #000; font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 20px; text-transform: uppercase; }
 
 .table-container { flex: 1; overflow-y: auto; padding: 30px; }
-.sheet-table { width: 100%; background: white; border-collapse: collapse; border-radius: 12px; overflow: hidden; }
-.sheet-table th { background: #f8fbf9; padding: 15px; text-align: left; font-size: 11px; border-bottom: 1px solid var(--border); }
+.sheet-table { width: 100%; background: white; border-collapse: collapse; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.sheet-table th { background: #f8fbf9; padding: 12px 15px; text-align: left; font-size: 11px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-light); }
 .sheet-table td { padding: 10px 15px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.sheet-table tr:hover td { background: #f8fbf9; }
 
-/* Loading overlay */
+/* DEFEITOS */
+.sidebar-defeitos { width: 340px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px; gap: 10px; }
+.defeito-card { background: white; border: 1px solid var(--border); border-left: 4px solid var(--warn); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; }
+.defeito-card:hover { background: #fff8f5; }
+.defeito-card.selected { background: #fff3e0; border-color: var(--warn); box-shadow: 0 2px 8px rgba(230,81,0,0.15); }
+.defeito-pep { font-weight: 700; font-size: 13px; color: var(--text); }
+.defeito-coords { font-size: 11px; color: var(--text-light); margin-top: 3px; font-family: monospace; }
+
+.stats-row { display: flex; gap: 8px; }
+.stat-box { flex: 1; background: var(--bg-soft); border-radius: 10px; padding: 10px 8px; text-align: center; border: 1px solid var(--border); }
+.stat-box .num { font-family: 'Syne'; font-size: 22px; }
+.stat-box .lbl { font-size: 10px; color: var(--text-light); text-transform: uppercase; }
+
+#map, #map-defeitos { flex: 1; }
+
 .loading-overlay { position: fixed; inset: 0; background: rgba(30,77,43,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999; color: white; gap: 16px; }
 .loading-overlay.hidden { display: none; }
 .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* Error banner */
 .error-banner { background: var(--danger); color: white; padding: 12px 20px; font-size: 13px; font-weight: 600; display: none; }
 
-/* Config panel */
 .config-panel { background: #fffbea; border: 1px solid #ffd600; border-radius: 12px; padding: 15px; margin-bottom: 15px; font-size: 12px; }
 .config-panel input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 8px; margin-top: 5px; font-size: 12px; }
-.config-panel button { margin-top: 8px; padding: 8px 16px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 12px; }
-
-#map { flex: 1; }
-
 .refresh-btn { padding: 8px 14px; background: var(--primary-light); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 700; }
 </style>
 </head>
 <body>
 
-<!-- Loading -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
   <span id="loadingMsg">Carregando planilha...</span>
 </div>
-
-<!-- Error -->
 <div class="error-banner" id="errorBanner"></div>
 
 <div class="header">
   <div class="top-line">
     <h1>PROGEL Logística</h1>
-    <div style="display:flex; align-items:center; gap:10px;">
-      <span id="syncStatus" style="font-size:11px; opacity:0.8; background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px;">⏳ Aguardando...</span>
-      <div style="font-size:11px; opacity:0.8; background:rgba(255,255,255,0.1); padding:4px 12px; border-radius:20px;">Porto Alegre/RS</div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span id="syncStatus" style="font-size:11px;opacity:0.8;background:rgba(255,255,255,0.1);padding:4px 12px;border-radius:20px;">⏳ Aguardando...</span>
+      <div style="font-size:11px;opacity:0.8;background:rgba(255,255,255,0.1);padding:4px 12px;border-radius:20px;">Porto Alegre/RS</div>
     </div>
   </div>
   <div class="tab-nav">
     <button class="tab-btn active" onclick="switchTab('mapa',this)">🗺 Planejamento</button>
+    <button class="tab-btn" onclick="switchTab('defeitos',this)">⚠️ Defeitos</button>
     <button class="tab-btn" onclick="switchTab('apontamento',this)">📋 Apontamento</button>
     <button class="tab-btn" onclick="switchTab('config',this)">⚙️ Config</button>
   </div>
 </div>
 
 <div class="content">
-  <!-- MAPA -->
+
+  <!-- PLANEJAMENTO -->
   <div class="tab-panel active" id="tab-mapa">
     <div class="sidebar">
       <div class="departure-box">
-        <span style="font-size:11px; font-weight:700;">🕒 HORA DE SAÍDA:</span>
+        <span style="font-size:11px;font-weight:700;">🕒 HORA DE SAÍDA:</span>
         <input type="time" id="departureTime" value="08:00" onchange="calculateFullRoute()">
       </div>
-
       <div class="jornada-card" id="jornadaUI">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:10px; font-weight:700; opacity:0.8">PREVISÃO DE RETORNO</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:10px;font-weight:700;opacity:0.8">PREVISÃO DE RETORNO</span>
           <span id="statusIcon">⏳</span>
         </div>
-        <div style="font-size:28px; font-family:'Syne'; margin-top:5px;" id="arrivalTime">--:--</div>
+        <div style="font-size:28px;font-family:'Syne';margin-top:5px;" id="arrivalTime">--:--</div>
         <div class="time-grid">
           <div class="time-item"><span>Trabalho (h)</span><strong id="sumObra">0.0h</strong></div>
           <div class="time-item"><span>Trânsito (h)</span><strong id="sumEstrada">0.0h</strong></div>
-          <div class="time-item" style="grid-column: span 2; margin-top:5px;">
+          <div class="time-item" style="grid-column:span 2;margin-top:5px;">
             <span>Tempo Total de Jornada</span>
             <strong id="sumTotal" style="font-size:20px;">0.0h</strong>
           </div>
         </div>
       </div>
-
-      <div style="display:flex; flex-direction:column; gap:5px;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; font-weight:700; color:var(--text-light)">FILTRAR DIA</span>
-          <button class="refresh-btn" onclick="loadSheetData()">🔄 Atualizar</button>
+      <div style="display:flex;flex-direction:column;gap:5px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:11px;font-weight:700;color:var(--text-light)">FILTRAR DIA</span>
+          <button class="refresh-btn" onclick="loadAll()">🔄 Atualizar</button>
         </div>
-        <select id="daySelect" onchange="changeDay(this.value)" style="width:100%; padding:10px; border-radius:10px; border:1px solid var(--border);"></select>
+        <select id="daySelect" onchange="changeDay(this.value)" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--border);"></select>
       </div>
-
       <div class="scroll-area" id="destList"></div>
     </div>
     <div id="map"></div>
   </div>
 
+  <!-- DEFEITOS -->
+  <div class="tab-panel" id="tab-defeitos">
+    <div class="sidebar-defeitos">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-family:'Syne';font-size:16px;font-weight:700;">⚠️ Defeitos</span>
+        <button class="refresh-btn" onclick="loadDefeitos()">🔄</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box"><div class="num" id="defTotal" style="color:var(--warn)">—</div><div class="lbl">Total</div></div>
+        <div class="stat-box"><div class="num" id="defDmt" style="color:var(--primary)">—</div><div class="lbl">DMT</div></div>
+        <div class="stat-box"><div class="num" id="defDbt" style="color:#2980b9">—</div><div class="lbl">DBT</div></div>
+      </div>
+
+      <input type="text" id="defSearch" placeholder="🔍 Buscar PEP..." oninput="filtrarDefeitos()"
+        style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:12px;">
+
+      <div style="flex:1;overflow-y:auto;" id="defeitosList"></div>
+    </div>
+    <div id="map-defeitos"></div>
+  </div>
+
   <!-- APONTAMENTO -->
   <div class="tab-panel" id="tab-apontamento">
     <div class="table-container">
-      <div style="margin-bottom:20px; display:flex; gap:10px; align-items:center;">
-        <button onclick="loadSheetData()" style="padding:10px 20px; background:var(--primary); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:700;">🔄 Recarregar Planilha</button>
-        <span id="lastSync" style="font-size:12px; color:var(--text-light);"></span>
+      <div style="margin-bottom:20px;display:flex;gap:10px;align-items:center;">
+        <button onclick="loadAll()" style="padding:10px 20px;background:var(--primary);color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700;">🔄 Recarregar</button>
+        <span id="lastSync" style="font-size:12px;color:var(--text-light);"></span>
       </div>
       <table class="sheet-table">
-        <thead>
-          <tr><th>Data</th><th>Obra</th><th>Endereço</th><th>Horas</th><th>Lat/Lng</th></tr>
-        </thead>
+        <thead><tr><th>Data</th><th>Obra</th><th>Endereço</th><th>Horas</th><th>Lat/Lng</th></tr></thead>
         <tbody id="sheetBody"></tbody>
       </table>
     </div>
@@ -151,427 +175,306 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg-soft); color: va
 
   <!-- CONFIG -->
   <div class="tab-panel" id="tab-config">
-    <div style="padding:30px; max-width:600px;">
-      <h2 style="font-family:'Syne'; margin-bottom:20px;">⚙️ Configuração da Planilha</h2>
+    <div style="padding:30px;max-width:620px;overflow-y:auto;">
+      <h2 style="font-family:'Syne';margin-bottom:20px;">⚙️ Configuração</h2>
 
       <div class="config-panel">
         <strong>🔑 Chave de API do Google</strong>
-        <input type="password" id="cfgApiKey" placeholder="AIzaSy...">
+        <input type="password" id="cfgApiKey">
       </div>
-
       <div class="config-panel">
         <strong>📊 ID da Planilha</strong>
-        <input type="text" id="cfgSheetId" placeholder="1eYLmRr5qE7pRyfu0xLUfHh9xv4Xhw8bmtu4HznC6kwM">
-        <small style="color:var(--text-light); margin-top:4px; display:block;">Encontrado na URL: /spreadsheets/d/<b>ID</b>/edit</small>
+        <input type="text" id="cfgSheetId">
+        <small style="color:var(--text-light);margin-top:4px;display:block;">URL: /spreadsheets/d/<b>ID</b>/edit</small>
       </div>
-
-      <div class="config-panel">
-        <strong>📑 Nome da Aba</strong>
-        <input type="text" id="cfgSheetName" placeholder="Plan1">
-      </div>
-
       <div class="config-panel" style="background:#f0f8f4;">
-        <strong>📌 Mapeamento de Colunas</strong>
-        <small style="color:var(--text-light); display:block; margin-bottom:8px;">Use letras (A, B, Z, AA...)</small>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+        <strong>📑 Aba de Obras</strong>
+        <input type="text" id="cfgSheetName" placeholder="Obras c/ Projetos">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
           <div><label style="font-size:11px;">Obra/Nome</label><input type="text" id="cfgColObra" placeholder="A"></div>
           <div><label style="font-size:11px;">Data</label><input type="text" id="cfgColData" placeholder="M"></div>
           <div><label style="font-size:11px;">Endereço</label><input type="text" id="cfgColEnd" placeholder="C"></div>
           <div><label style="font-size:11px;">Horas</label><input type="text" id="cfgColH" placeholder="D"></div>
-          <div style="grid-column:span 2;"><label style="font-size:11px;">Lat,Lng (coluna única, ex: -31.72,-52.38)</label><input type="text" id="cfgColLatLng" placeholder="Z"></div>
+          <div style="grid-column:span 2;"><label style="font-size:11px;">Lat,Lng (coluna única)</label><input type="text" id="cfgColLatLng" placeholder="Z"></div>
         </div>
       </div>
-
-      <button onclick="saveConfig()" style="padding:12px 24px; background:var(--primary); color:white; border:none; border-radius:10px; cursor:pointer; font-weight:700; font-size:14px; margin-top:10px;">💾 Salvar e Carregar</button>
+      <div class="config-panel" style="background:#fff8f5;border-color:var(--warn);">
+        <strong>⚠️ Aba de Defeitos</strong>
+        <input type="text" id="cfgDefSheetName" placeholder="defeitos">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;">
+          <div><label style="font-size:11px;">Coluna PEP</label><input type="text" id="cfgColPep" placeholder="F"></div>
+          <div><label style="font-size:11px;">Coluna Coordenadas</label><input type="text" id="cfgColCoord" placeholder="G"></div>
+        </div>
+      </div>
+      <button onclick="saveConfig()" style="padding:12px 24px;background:var(--primary);color:white;border:none;border-radius:10px;cursor:pointer;font-weight:700;font-size:14px;margin-top:10px;">💾 Salvar e Carregar</button>
     </div>
   </div>
 </div>
 
 <script>
-// ─────────────────────────────────────────────
-// CONFIGURAÇÃO INICIAL
-// ─────────────────────────────────────────────
 let CONFIG = {
-  apiKey: 'AIzaSyAL9O1XpbdW4GUuCtCiiPYPpM9r1_g1wlc',
-  sheetId: '1Ai3Wo7j5DiNIKmcVgL8Gh17Bmr4_ahqlEeFbq0gwvhQ',
-  sheetName: 'Obras c/ Projetos',
-  colObra: 'A',
-  colData: 'M',
-  colEnd: 'C',
-  colH: 'D',
-  colLatLng: 'Z'
+  apiKey:       'AIzaSyAL9O1XpbdW4GUuCtCiiPYPpM9r1_g1wlc',
+  sheetId:      '1Ai3Wo7j5DiNIKmcVgL8Gh17Bmr4_ahqlEeFbq0gwvhQ',
+  sheetName:    'Obras c/ Projetos',
+  colObra:'A', colData:'M', colEnd:'C', colH:'D', colLatLng:'Z',
+  defSheetName: 'defeitos',
+  colPep:  'F',
+  colCoord:'G'
 };
+try{ const s=JSON.parse(sessionStorage.getItem('progelConfig')||'{}'); CONFIG={...CONFIG,...s}; }catch(e){}
 
-// Tenta carregar config salva
-try {
-  const saved = JSON.parse(sessionStorage.getItem('progelConfig') || '{}');
-  CONFIG = { ...CONFIG, ...saved };
-} catch(e) {}
+const BASE={lat:-31.7261,lng:-52.3836};
+const COLORS=["#1e4d2b","#2a52be","#e67e22","#c0392b","#8e44ad","#16a085","#2980b9","#f39c12","#27ae60","#34495e"];
 
-const BASE = { lat: -31.7261, lng: -52.3836 };
-const COLORS = ["#1e4d2b","#2a52be","#e67e22","#c0392b","#8e44ad","#16a085","#2980b9","#f39c12","#27ae60","#34495e"];
+let rows=[],defeitos=[],defFiltrados=[];
+let selectedRoute=[],allPins=[],routeLayer=null;
+let defPins=[],defSelected=null;
 
-let rows = [];
-let selectedRoute = [];
-let allPins = [];
-let routeLayer = null;
-
-// ─────────────────────────────────────────────
-// MAPA
-// ─────────────────────────────────────────────
-const map = L.map('map', { zoomControl: false }).setView([BASE.lat, BASE.lng], 12);
+// MAPAS
+const map=L.map('map',{zoomControl:false}).setView([BASE.lat,BASE.lng],12);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
-L.marker([BASE.lat, BASE.lng], {
-  icon: L.divIcon({ html: '<div style="background:#1a2e1f; width:14px; height:14px; border-radius:50%; border:3px solid white; box-shadow:0 2px 8px rgba(0,0,0,0.3)"></div>', className: '' })
-}).addTo(map);
+L.marker([BASE.lat,BASE.lng],{icon:L.divIcon({html:'<div style="background:#1a2e1f;width:14px;height:14px;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>',className:''})}).addTo(map);
 
-// ─────────────────────────────────────────────
-// HELPERS: coluna letra → índice numérico
-// ─────────────────────────────────────────────
-function colToIndex(col) {
-  col = col.toUpperCase().trim();
-  let n = 0;
-  for (let i = 0; i < col.length; i++) {
-    n = n * 26 + (col.charCodeAt(i) - 64);
-  }
-  return n - 1; // 0-based
+const mapDef=L.map('map-defeitos',{zoomControl:false}).setView([BASE.lat,BASE.lng],11);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(mapDef);
+
+// HELPERS
+function colToIndex(col){col=col.toUpperCase().trim();let n=0;for(let i=0;i<col.length;i++)n=n*26+(col.charCodeAt(i)-64);return n-1;}
+function showLoading(msg){document.getElementById('loadingMsg').textContent=msg;document.getElementById('loadingOverlay').classList.remove('hidden');}
+function hideLoading(){document.getElementById('loadingOverlay').classList.add('hidden');}
+function showError(msg){const b=document.getElementById('errorBanner');b.textContent='⚠️ '+msg;b.style.display='block';}
+function hideError(){document.getElementById('errorBanner').style.display='none';}
+
+async function fetchSheet(sheetName){
+  const url=`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.sheetId}/values/${encodeURIComponent(sheetName)}?key=${CONFIG.apiKey}`;
+  const r=await fetch(url);
+  if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
+  return (await r.json()).values||[];
 }
 
-// ─────────────────────────────────────────────
-// CARREGAR PLANILHA
-// ─────────────────────────────────────────────
-async function loadSheetData() {
-  showLoading('Carregando planilha do Google Sheets...');
+async function loadAll(){
+  showLoading('Carregando dados...');
   hideError();
+  try{
+    await Promise.all([loadSheetData(),loadDefeitos()]);
+    const now=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('syncStatus').textContent=`✅ Sync ${now}`;
+    document.getElementById('lastSync').textContent=`Última sincronização: ${now}`;
+  }catch(e){showError(e.message);}
+  hideLoading();
+}
 
-  const { apiKey, sheetId, sheetName } = CONFIG;
-
-  if (!apiKey || !sheetId) {
-    hideLoading();
-    showError('Configure a chave de API e o ID da planilha na aba ⚙️ Config.');
-    return;
+// OBRAS
+async function loadSheetData(){
+  const values=await fetchSheet(CONFIG.sheetName);
+  if(values.length<2)return;
+  const iO=colToIndex(CONFIG.colObra),iD=colToIndex(CONFIG.colData),
+        iE=colToIndex(CONFIG.colEnd),iH=colToIndex(CONFIG.colH),
+        iL=colToIndex(CONFIG.colLatLng);
+  rows=[];const dataSet=new Set();
+  for(let i=1;i<values.length;i++){
+    const r=values[i];const get=idx=>r[idx]!==undefined?String(r[idx]).trim():'';
+    const obra=get(iO),data=get(iD),end=get(iE),h=parseFloat(get(iH))||0,latlng=get(iL);
+    if(!obra&&!data)continue;
+    let lat=BASE.lat+(Math.random()-.5)*.15,lng=BASE.lng+(Math.random()-.5)*.15;
+    if(latlng){const p=latlng.split(',');if(p.length>=2){const a=parseFloat(p[0]),b=parseFloat(p[1]);if(!isNaN(a)&&!isNaN(b)){lat=a;lng=b;}}}
+    let dn=data;const m=data.match(/(\d{1,2})[\/\-\.](\d{1,2})/);
+    if(m)dn=`${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}`;
+    dataSet.add(dn);
+    rows.push({id:`row-${i}`,date:dn,obra,end,h,color:COLORS[rows.length%COLORS.length],lat,lng});
   }
+  const sel=document.getElementById('daySelect');sel.innerHTML='';
+  [...dataSet].sort().forEach(d=>{const o=document.createElement('option');o.value=o.textContent=d;sel.appendChild(o);});
+  renderSheet();
+  if(sel.options.length>0)changeDay(sel.options[0].value);
+}
 
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${encodeURIComponent(sheetName)}?key=${apiKey}`;
-
-  try {
-    const resp = await fetch(url);
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error?.message || `HTTP ${resp.status}`);
-    }
-    const data = await resp.json();
-    const values = data.values || [];
-
-    if (values.length < 2) {
-      throw new Error('Planilha vazia ou sem dados após o cabeçalho.');
-    }
-
-    // Índices das colunas
-    const iObra    = colToIndex(CONFIG.colObra);
-    const iData    = colToIndex(CONFIG.colData);
-    const iEnd     = colToIndex(CONFIG.colEnd);
-    const iH       = colToIndex(CONFIG.colH);
-    const iLatLng  = colToIndex(CONFIG.colLatLng);
-
-    rows = [];
-    const dataSet = new Set();
-
-    // Pula linha 0 (cabeçalho)
-    for (let i = 1; i < values.length; i++) {
-      const r = values[i];
-      const get = (idx) => (r[idx] !== undefined ? String(r[idx]).trim() : '');
-
-      const obra    = get(iObra);
-      const data    = get(iData);
-      const end     = get(iEnd);
-      const h       = parseFloat(get(iH)) || 0;
-      const latlng  = get(iLatLng);
-
-      if (!obra && !data) continue; // linha vazia
-
-      let lat = BASE.lat + (Math.random() - 0.5) * 0.15;
-      let lng = BASE.lng + (Math.random() - 0.5) * 0.15;
-
-      if (latlng) {
-        const parts = latlng.split(',');
-        if (parts.length >= 2) {
-          const pLat = parseFloat(parts[0]);
-          const pLng = parseFloat(parts[1]);
-          if (!isNaN(pLat) && !isNaN(pLng)) {
-            lat = pLat;
-            lng = pLng;
-          }
-        }
-      }
-
-      // Normaliza data
-      let dataNorm = data;
-      if (data) {
-        // Tenta parsear vários formatos e normaliza para DD/MM
-        const m = data.match(/(\d{1,2})[\/\-\.](\d{1,2})/);
-        if (m) dataNorm = `${m[1].padStart(2,'0')}/${m[2].padStart(2,'0')}`;
-      }
-
-      dataSet.add(dataNorm);
-      rows.push({
-        id: `row-${i}`,
-        date: dataNorm,
-        obra,
-        end,
-        h,
-        color: COLORS[rows.length % COLORS.length],
-        lat,
-        lng
-      });
-    }
-
-    // Popula select de datas
-    const daySelect = document.getElementById('daySelect');
-    daySelect.innerHTML = '';
-    const days = [...dataSet].sort();
-    const dayNames = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-    days.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d;
-      opt.textContent = d;
-      daySelect.appendChild(opt);
-    });
-
-    // Renderiza tabela
-    renderSheet();
-
-    // Atualiza mapa com primeiro dia disponível
-    if (days.length > 0) changeDay(days[0]);
-
-    // Status
-    const now = new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' });
-    document.getElementById('syncStatus').textContent = `✅ Sync ${now}`;
-    document.getElementById('lastSync').textContent = `Última sincronização: ${now}`;
-
-    hideLoading();
-  } catch (e) {
-    hideLoading();
-    showError(`Erro ao carregar planilha: ${e.message}`);
-    console.error(e);
+// DEFEITOS
+async function loadDefeitos(){
+  const values=await fetchSheet(CONFIG.defSheetName);
+  const iP=colToIndex(CONFIG.colPep),iC=colToIndex(CONFIG.colCoord);
+  defPins.forEach(p=>mapDef.removeLayer(p));defPins=[];defeitos=[];
+  for(let i=1;i<values.length;i++){
+    const r=values[i];const get=idx=>r[idx]!==undefined?String(r[idx]).trim():'';
+    const pep=get(iP),coord=get(iC);
+    if(!pep&&!coord)continue;
+    let lat=null,lng=null;
+    if(coord){const p=coord.split(',');if(p.length>=2){const a=parseFloat(p[0].trim()),b=parseFloat(p[1].trim());if(!isNaN(a)&&!isNaN(b)){lat=a;lng=b;}}}
+    defeitos.push({id:`def-${i}`,pep,coord,lat,lng});
   }
+  defFiltrados=[...defeitos];
+  renderDefeitos();renderDefPins();atualizarStats();
 }
 
-// ─────────────────────────────────────────────
-// UI HELPERS
-// ─────────────────────────────────────────────
-function showLoading(msg) {
-  document.getElementById('loadingMsg').textContent = msg;
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-}
-function hideLoading() {
-  document.getElementById('loadingOverlay').classList.add('hidden');
-}
-function showError(msg) {
-  const b = document.getElementById('errorBanner');
-  b.textContent = '⚠️ ' + msg;
-  b.style.display = 'block';
-}
-function hideError() {
-  document.getElementById('errorBanner').style.display = 'none';
+function atualizarStats(){
+  document.getElementById('defTotal').textContent=defeitos.length;
+  document.getElementById('defDmt').textContent=defeitos.filter(d=>d.pep.toUpperCase().includes('DMT')).length;
+  document.getElementById('defDbt').textContent=defeitos.filter(d=>d.pep.toUpperCase().includes('DBT')).length;
 }
 
-function switchTab(name, btn) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  document.getElementById('tab-' + name).classList.add('active');
-  if (name === 'mapa') setTimeout(() => map.invalidateSize(), 100);
+function filtrarDefeitos(){
+  const q=document.getElementById('defSearch').value.toLowerCase();
+  defFiltrados=q?defeitos.filter(d=>d.pep.toLowerCase().includes(q)||d.coord.toLowerCase().includes(q)):[...defeitos];
+  renderDefeitos();
 }
 
-// ─────────────────────────────────────────────
-// RENDERIZA TABELA
-// ─────────────────────────────────────────────
-function renderSheet() {
-  const body = document.getElementById('sheetBody');
-  if (rows.length === 0) {
-    body.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-light)">Nenhum dado carregado.</td></tr>';
-    return;
-  }
-  body.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.date}</td>
-      <td style="font-weight:700">${r.obra}</td>
-      <td>${r.end}</td>
-      <td>${r.h}h</td>
-      <td style="font-size:11px; color:var(--text-light);">${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</td>
-    </tr>
-  `).join('');
+function renderDefeitos(){
+  const list=document.getElementById('defeitosList');
+  if(defFiltrados.length===0){list.innerHTML='<div style="color:var(--text-light);font-size:13px;text-align:center;margin-top:20px;">Nenhum defeito encontrado.</div>';return;}
+  list.innerHTML=defFiltrados.map(d=>{
+    const tipo=d.pep.toUpperCase().includes('DMT')?'DMT':'DBT';
+    const cor=tipo==='DMT'?'#1e4d2b':'#2980b9';
+    return `<div class="defeito-card" id="dcard-${d.id}" onclick="selecionarDefeito('${d.id}')">
+      <div class="defeito-pep">${d.pep} <span style="background:${cor};color:white;font-size:9px;font-weight:800;padding:2px 7px;border-radius:10px;vertical-align:middle;">${tipo}</span></div>
+      <div class="defeito-coords">${d.coord||'Sem coordenadas'}</div>
+    </div>`;
+  }).join('');
 }
 
-// ─────────────────────────────────────────────
-// MAPA - DIA
-// ─────────────────────────────────────────────
-async function changeDay(day) {
-  selectedRoute = [];
-  allPins.forEach(p => map.removeLayer(p));
-  allPins = [];
-  if (routeLayer) map.removeLayer(routeLayer);
-
-  const dayData = rows.filter(r => r.date === day);
-  const list = document.getElementById('destList');
-  list.innerHTML = '';
-
-  if (dayData.length === 0) {
-    list.innerHTML = '<div style="color:var(--text-light); font-size:13px; text-align:center; margin-top:20px;">Nenhuma obra para este dia.</div>';
-    updateUI(0, 0);
-    return;
-  }
-
-  dayData.forEach(obra => {
-    const pin = L.circleMarker([obra.lat, obra.lng], {
-      radius: 7, color: obra.color, fillColor: obra.color, fillOpacity: 0.8, weight: 2
-    }).addTo(map);
-    pin.bindTooltip(obra.obra, { permanent: false });
-    allPins.push(pin);
-
-    const card = document.createElement('div');
-    card.className = 'dest-card';
-    card.id = `card-${obra.id}`;
-    card.innerHTML = `
-      <div class="color-bar" style="background:${obra.color}"></div>
-      <div style="flex:1; padding-left:8px;">
-        <div style="font-weight:700; font-size:14px;">${obra.obra}</div>
-        <div style="font-size:11px; color:var(--text-light);">${obra.end}</div>
-        <div style="font-size:11px; font-weight:700; color:var(--primary-light)">${obra.h}h de obra</div>
-      </div>
-    `;
-    card.onclick = () => toggleObra(obra);
-    list.appendChild(card);
+function renderDefPins(){
+  const validos=defeitos.filter(d=>d.lat!==null);
+  validos.forEach(d=>{
+    const isDmt=d.pep.toUpperCase().includes('DMT');
+    const cor=isDmt?'#1e4d2b':'#2980b9';
+    const pin=L.circleMarker([d.lat,d.lng],{radius:6,color:cor,fillColor:cor,fillOpacity:0.8,weight:2})
+      .addTo(mapDef).bindTooltip(d.pep,{permanent:false,direction:'top'});
+    pin.on('click',()=>selecionarDefeito(d.id));
+    defPins.push(pin);d._pin=pin;
   });
-
-  // Centraliza mapa
-  if (dayData.length > 0) {
-    const bounds = L.latLngBounds(dayData.map(o => [o.lat, o.lng]));
-    map.fitBounds(bounds, { padding: [60, 60] });
-  }
-
-  updateSuggestions();
-  updateUI(0, 0);
-}
-
-function updateSuggestions() {
-  document.querySelectorAll('.sugestao-tag').forEach(t => t.remove());
-  const lastPoint = selectedRoute.length > 0 ? selectedRoute[selectedRoute.length - 1] : BASE;
-  const day = document.getElementById('daySelect').value;
-  const unselected = rows.filter(r => r.date === day && !selectedRoute.includes(r));
-
-  if (unselected.length > 0) {
-    let closest = unselected.reduce((prev, curr) => {
-      let dP = Math.hypot(prev.lat - lastPoint.lat, prev.lng - lastPoint.lng);
-      let dC = Math.hypot(curr.lat - lastPoint.lat, curr.lng - lastPoint.lng);
-      return dC < dP ? curr : prev;
-    });
-    const card = document.getElementById(`card-${closest.id}`);
-    if (card) card.innerHTML += `<span class="sugestao-tag">Próxima</span>`;
+  if(validos.length>0){
+    const b=L.latLngBounds(validos.map(d=>[d.lat,d.lng]));
+    mapDef.fitBounds(b,{padding:[40,40]});
   }
 }
 
-function toggleObra(obra) {
-  const idx = selectedRoute.indexOf(obra);
-  if (idx > -1) {
-    selectedRoute.splice(idx, 1);
-    document.getElementById(`card-${obra.id}`)?.classList.remove('selected');
-  } else {
-    selectedRoute.push(obra);
-    document.getElementById(`card-${obra.id}`)?.classList.add('selected');
+function selecionarDefeito(id){
+  if(defSelected){
+    document.getElementById(`dcard-${defSelected}`)?.classList.remove('selected');
+    const ant=defeitos.find(d=>d.id===defSelected);
+    if(ant&&ant._pin){const c=ant.pep.toUpperCase().includes('DMT')?'#1e4d2b':'#2980b9';ant._pin.setStyle({color:c,fillColor:c,radius:6});}
   }
-  updateSuggestions();
-  calculateFullRoute();
+  defSelected=id;
+  const d=defeitos.find(x=>x.id===id);if(!d)return;
+  document.getElementById(`dcard-${id}`)?.classList.add('selected');
+  document.getElementById(`dcard-${id}`)?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  if(d._pin)d._pin.setStyle({color:'#e65100',fillColor:'#e65100',radius:9});
+  if(d.lat!==null)mapDef.setView([d.lat,d.lng],15,{animate:true});
 }
 
-async function calculateFullRoute() {
-  if (routeLayer) map.removeLayer(routeLayer);
-  if (selectedRoute.length === 0) { updateUI(0, 0); return; }
-
-  let pts = [BASE, ...selectedRoute, BASE];
-  const coords = pts.map(p => `${p.lng},${p.lat}`).join(';');
-
-  try {
-    const resp = await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
-    const data = await resp.json();
-    const route = data.routes[0];
-
-    routeLayer = L.geoJSON(route.geometry, {
-      style: { color: '#1e4d2b', weight: 5, opacity: 0.6 }
-    }).addTo(map);
-    map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
-
-    const hObra = selectedRoute.reduce((a, b) => a + parseFloat(b.h), 0);
-    const hEstrada = route.duration / 3600;
-    updateUI(hObra, hEstrada);
-  } catch (e) {
-    console.error('Erro na rota:', e);
-  }
+// PLANEJAMENTO
+async function changeDay(day){
+  selectedRoute=[];allPins.forEach(p=>map.removeLayer(p));allPins=[];
+  if(routeLayer)map.removeLayer(routeLayer);
+  const dayData=rows.filter(r=>r.date===day);
+  const list=document.getElementById('destList');list.innerHTML='';
+  if(dayData.length===0){list.innerHTML='<div style="color:var(--text-light);font-size:13px;text-align:center;margin-top:20px;">Nenhuma obra para este dia.</div>';updateUI(0,0);return;}
+  dayData.forEach(obra=>{
+    const pin=L.circleMarker([obra.lat,obra.lng],{radius:7,color:obra.color,fillColor:obra.color,fillOpacity:0.8,weight:2}).addTo(map);
+    pin.bindTooltip(obra.obra,{permanent:false});allPins.push(pin);
+    const card=document.createElement('div');card.className='dest-card';card.id=`card-${obra.id}`;
+    card.innerHTML=`<div class="color-bar" style="background:${obra.color}"></div>
+      <div style="flex:1;padding-left:8px;">
+        <div style="font-weight:700;font-size:14px;">${obra.obra}</div>
+        <div style="font-size:11px;color:var(--text-light);">${obra.end}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--primary-light)">${obra.h}h de obra</div>
+      </div>`;
+    card.onclick=()=>toggleObra(obra);list.appendChild(card);
+  });
+  if(dayData.length>0){const b=L.latLngBounds(dayData.map(o=>[o.lat,o.lng]));map.fitBounds(b,{padding:[60,60]});}
+  updateSuggestions();updateUI(0,0);
 }
 
-function updateUI(obra, estrada) {
-  const total = obra + estrada;
-  const ui = document.getElementById('jornadaUI');
-  const departure = document.getElementById('departureTime').value;
-
-  document.getElementById('sumObra').textContent = obra.toFixed(1) + 'h';
-  document.getElementById('sumEstrada').textContent = estrada.toFixed(1) + 'h';
-  document.getElementById('sumTotal').textContent = total.toFixed(1) + 'h';
-
-  if (total > 0) {
-    const [h, m] = departure.split(':').map(Number);
-    let totalMin = (h * 60) + m + (total * 60);
-    let retH = Math.floor(totalMin / 60) % 24;
-    let retM = Math.floor(totalMin % 60);
-    document.getElementById('arrivalTime').textContent =
-      String(retH).padStart(2, '0') + ':' + String(retM).padStart(2, '0');
-  } else {
-    document.getElementById('arrivalTime').textContent = '--:--';
-  }
-
-  if (total > 8.8) {
-    ui.classList.add('alert');
-    document.getElementById('statusIcon').textContent = '⚠️';
-  } else {
-    ui.classList.remove('alert');
-    document.getElementById('statusIcon').textContent = total > 0 ? '✅' : '⏳';
+function updateSuggestions(){
+  document.querySelectorAll('.sugestao-tag').forEach(t=>t.remove());
+  const last=selectedRoute.length>0?selectedRoute[selectedRoute.length-1]:BASE;
+  const day=document.getElementById('daySelect').value;
+  const unsel=rows.filter(r=>r.date===day&&!selectedRoute.includes(r));
+  if(unsel.length>0){
+    const c=unsel.reduce((a,b)=>Math.hypot(b.lat-last.lat,b.lng-last.lng)<Math.hypot(a.lat-last.lat,a.lng-last.lng)?b:a);
+    document.getElementById(`card-${c.id}`)?.insertAdjacentHTML('beforeend','<span class="sugestao-tag">Próxima</span>');
   }
 }
 
-// ─────────────────────────────────────────────
-// CONFIG
-// ─────────────────────────────────────────────
-function fillConfigFields() {
-  document.getElementById('cfgApiKey').value    = CONFIG.apiKey || '';
-  document.getElementById('cfgSheetId').value   = CONFIG.sheetId || '';
-  document.getElementById('cfgSheetName').value = CONFIG.sheetName || 'Obras c/ Projetos';
-  document.getElementById('cfgColObra').value   = CONFIG.colObra || 'A';
-  document.getElementById('cfgColData').value   = CONFIG.colData || 'M';
-  document.getElementById('cfgColEnd').value    = CONFIG.colEnd || 'C';
-  document.getElementById('cfgColH').value      = CONFIG.colH || 'D';
-  document.getElementById('cfgColLatLng').value = CONFIG.colLatLng || 'Z';
+function toggleObra(obra){
+  const idx=selectedRoute.indexOf(obra);
+  if(idx>-1){selectedRoute.splice(idx,1);document.getElementById(`card-${obra.id}`)?.classList.remove('selected');}
+  else{selectedRoute.push(obra);document.getElementById(`card-${obra.id}`)?.classList.add('selected');}
+  updateSuggestions();calculateFullRoute();
 }
 
-function saveConfig() {
-  CONFIG.apiKey    = document.getElementById('cfgApiKey').value.trim();
-  CONFIG.sheetId   = document.getElementById('cfgSheetId').value.trim();
-  CONFIG.sheetName = document.getElementById('cfgSheetName').value.trim() || 'Plan1';
-  CONFIG.colObra   = document.getElementById('cfgColObra').value.trim() || 'A';
-  CONFIG.colData   = document.getElementById('cfgColData').value.trim() || 'M';
-  CONFIG.colEnd    = document.getElementById('cfgColEnd').value.trim() || 'C';
-  CONFIG.colH      = document.getElementById('cfgColH').value.trim() || 'D';
-  CONFIG.colLatLng = document.getElementById('cfgColLatLng').value.trim() || 'Z';
-
-  try { sessionStorage.setItem('progelConfig', JSON.stringify(CONFIG)); } catch(e) {}
-  loadSheetData();
+async function calculateFullRoute(){
+  if(routeLayer)map.removeLayer(routeLayer);
+  if(selectedRoute.length===0){updateUI(0,0);return;}
+  const pts=[BASE,...selectedRoute,BASE];
+  const coords=pts.map(p=>`${p.lng},${p.lat}`).join(';');
+  try{
+    const resp=await fetch(`https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson`);
+    const data=await resp.json();const route=data.routes[0];
+    routeLayer=L.geoJSON(route.geometry,{style:{color:'#1e4d2b',weight:5,opacity:0.6}}).addTo(map);
+    map.fitBounds(routeLayer.getBounds(),{padding:[50,50]});
+    updateUI(selectedRoute.reduce((a,b)=>a+parseFloat(b.h),0),route.duration/3600);
+  }catch(e){console.error(e);}
 }
 
-// ─────────────────────────────────────────────
-// INIT
-// ─────────────────────────────────────────────
+function updateUI(obra,estrada){
+  const total=obra+estrada;const ui=document.getElementById('jornadaUI');
+  const dep=document.getElementById('departureTime').value;
+  document.getElementById('sumObra').textContent=obra.toFixed(1)+'h';
+  document.getElementById('sumEstrada').textContent=estrada.toFixed(1)+'h';
+  document.getElementById('sumTotal').textContent=total.toFixed(1)+'h';
+  if(total>0){const[h,m]=dep.split(':').map(Number);let t=(h*60)+m+(total*60);
+    document.getElementById('arrivalTime').textContent=String(Math.floor(t/60)%24).padStart(2,'0')+':'+String(Math.floor(t%60)).padStart(2,'0');
+  }else{document.getElementById('arrivalTime').textContent='--:--';}
+  if(total>8.8){ui.classList.add('alert');document.getElementById('statusIcon').textContent='⚠️';}
+  else{ui.classList.remove('alert');document.getElementById('statusIcon').textContent=total>0?'✅':'⏳';}
+}
+
+function renderSheet(){
+  const body=document.getElementById('sheetBody');
+  if(rows.length===0){body.innerHTML='<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light)">Nenhum dado.</td></tr>';return;}
+  body.innerHTML=rows.map(r=>`<tr><td>${r.date}</td><td style="font-weight:700">${r.obra}</td><td>${r.end}</td><td>${r.h}h</td><td style="font-size:11px;color:var(--text-light);">${r.lat.toFixed(4)}, ${r.lng.toFixed(4)}</td></tr>`).join('');
+}
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');document.getElementById('tab-'+name).classList.add('active');
+  if(name==='mapa')setTimeout(()=>map.invalidateSize(),100);
+  if(name==='defeitos')setTimeout(()=>mapDef.invalidateSize(),100);
+}
+
+function fillConfigFields(){
+  document.getElementById('cfgApiKey').value      =CONFIG.apiKey||'';
+  document.getElementById('cfgSheetId').value     =CONFIG.sheetId||'';
+  document.getElementById('cfgSheetName').value   =CONFIG.sheetName||'Obras c/ Projetos';
+  document.getElementById('cfgColObra').value     =CONFIG.colObra||'A';
+  document.getElementById('cfgColData').value     =CONFIG.colData||'M';
+  document.getElementById('cfgColEnd').value      =CONFIG.colEnd||'C';
+  document.getElementById('cfgColH').value        =CONFIG.colH||'D';
+  document.getElementById('cfgColLatLng').value   =CONFIG.colLatLng||'Z';
+  document.getElementById('cfgDefSheetName').value=CONFIG.defSheetName||'defeitos';
+  document.getElementById('cfgColPep').value      =CONFIG.colPep||'F';
+  document.getElementById('cfgColCoord').value    =CONFIG.colCoord||'G';
+}
+
+function saveConfig(){
+  CONFIG.apiKey       =document.getElementById('cfgApiKey').value.trim();
+  CONFIG.sheetId      =document.getElementById('cfgSheetId').value.trim();
+  CONFIG.sheetName    =document.getElementById('cfgSheetName').value.trim()||'Obras c/ Projetos';
+  CONFIG.colObra      =document.getElementById('cfgColObra').value.trim()||'A';
+  CONFIG.colData      =document.getElementById('cfgColData').value.trim()||'M';
+  CONFIG.colEnd       =document.getElementById('cfgColEnd').value.trim()||'C';
+  CONFIG.colH         =document.getElementById('cfgColH').value.trim()||'D';
+  CONFIG.colLatLng    =document.getElementById('cfgColLatLng').value.trim()||'Z';
+  CONFIG.defSheetName =document.getElementById('cfgDefSheetName').value.trim()||'defeitos';
+  CONFIG.colPep       =document.getElementById('cfgColPep').value.trim()||'F';
+  CONFIG.colCoord     =document.getElementById('cfgColCoord').value.trim()||'G';
+  try{sessionStorage.setItem('progelConfig',JSON.stringify(CONFIG));}catch(e){}
+  loadAll();
+}
+
 fillConfigFields();
-loadSheetData();
+loadAll();
 </script>
 </body>
 </html>
